@@ -59,7 +59,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 20, maxWidth: 420, margin: "40px auto" }}>
-      <h1>TodoList</h1>
+      <h1>Todo</h1>
 
       <div style={{ display: "flex", gap: 8 }}>
         <input
