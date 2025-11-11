@@ -1,58 +1,72 @@
 // App.tsx
 import { useState, useEffect } from "react";
 
-// ① 先に型を定義（type: 型定義）
+// ① 型定義（type: 型定義）
 type Todo = {
-  id: string;   // unique id（ユニークID）
-  title: string; // task title（タスク名）
+  id: string;     // unique id（ユニークID）
+  title: string;  // task title（タスク名）
+  done: boolean;  // done flag（完了フラグ）
 };
 
 export default function App() {
   const [text, setText] = useState("");
 
-  // ② Todo[] で初期化。旧データ（string配列）もマイグレーション（migration：移行）対応
+  // ② 初期化（旧データのマイグレーション：migration/移行）
   const [todos, setTodos] = useState<Todo[]>(() => {
     try {
       const saved = localStorage.getItem("todos");
-      if (!saved) return []; // 
-      const parsed = JSON.parse(saved); 
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
       if (!Array.isArray(parsed)) return [];
 
-      // 旧：string[] → 新：Todo[] に変換
+      // 旧: string[] → 新: Todo[]
       if (parsed.length > 0 && typeof parsed[0] === "string") {
         return (parsed as string[]).map((title, idx) => ({
           id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}`,
           title,
+          done: false,
         }));
       }
 
-      return parsed as Todo[];
+      // 旧: {id,title} だけの配列 → done を補完
+      return (parsed as any[]).map((t) => ({
+        id: t.id,
+        title: t.title,
+        done: typeof t.done === "boolean" ? t.done : false,
+      })) as Todo[];
     } catch {
       return [];
     }
   });
 
-  // ③ 追加：オブジェクト {id, title} を push
+  // ③ 追加（add）
   const addTodo = () => {
     const title = text.trim(); // trim（前後空白除去）
     if (!title) return;
 
-    // ※ テンプレートリテラルは `` バッククォート！
     const newTodo: Todo = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title,
+      done: false, // 追加：常に未完で作成
     };
 
     setTodos((prev) => [...prev, newTodo]); // spread（スプレッド：配列展開）
     setText("");
   };
 
-  // ④ 削除：id で filter（フィルター：絞り込み）
+  // ④ 完了切替（toggle：ON/OFF切替）
+  const toggleDone = (id: string) => {
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+    );
+  };
+
+  // ⑤ 削除（remove）
   const removeTodoById = (id: string) => {
     setTodos((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // ⑤ 永続化：useEffect（ユーズエフェクト：副作用フック）
+  // ⑥ 永続化（useEffect：副作用フック）
   useEffect(() => {
     localStorage.setItem("todos", JSON.stringify(todos));
   }, [todos]);
@@ -75,7 +89,22 @@ export default function App() {
       <ul style={{ marginTop: 16, paddingLeft: 16 }}>
         {todos.map((t) => (
           <li key={t.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ flex: 1 }}>{t.title}</span>
+            {/* 完了切替（checkbox：チェックボックス） */}
+            <input
+              type="checkbox"
+              checked={t.done}
+              onChange={() => toggleDone(t.id)}
+              aria-label="完了切替"
+            />
+            <span
+              style={{
+                flex: 1,
+                textDecoration: t.done ? "line-through" : "none", // 取り消し線
+                opacity: t.done ? 0.6 : 1,
+              }}
+            >
+              {t.title}
+            </span>
             <button onClick={() => removeTodoById(t.id)}>削除</button>
           </li>
         ))}
